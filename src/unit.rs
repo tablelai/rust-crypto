@@ -56,23 +56,24 @@ pub unsafe extern "C" fn Java_com_fcwc_pay_utils_AESUtil_aes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_fcwc_pay_utils_AESUtil_aesd(
+pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_aesd(
     env: JNIEnv,
     _jclass: JObject,
     data: JString,
     de: i32,
 ) -> jstring {
-    let ds = CString::from(CStr::from_ptr(env.get_string(data).unwrap().as_ptr()));
-    if de == 1 {
-        println!("原文： {:?}", ds);
+    let kk;
+    let ii;
+    let ds: String = env.get_string(data).expect("参数错误——lib——en!").into();
+    if de == 0 {
+        kk = &key::KEY;
+        ii = &key::IV;
+    } else {
+        kk = &key::E_KEY;
+        ii = &key::E_IV;
     }
 
-    let encrypted_data = aesl::encrypt(ds.as_bytes(), &key::KEY, &key::IV)
-        .ok()
-        .unwrap();
-    if de == 1 {
-        println!("密文： {:?}", &encrypted_data[..]);
-    }
+    let encrypted_data = aesl::encrypt(ds.as_bytes(), kk, ii).ok().unwrap();
 
     let es = encrypted_data.to_base64(STANDARD);
     let output = env.new_string(es).unwrap();
@@ -89,21 +90,36 @@ pub unsafe extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaesd(
+pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaesd(
     env: JNIEnv,
     _jclass: JObject,
     data: JString,
     de: i32,
 ) -> jstring {
-    let ds = CString::from(CStr::from_ptr(env.get_string(data).unwrap().as_ptr()));
-    if de == 1 {
-        println!("密文： {:?}", ds);
+    let kk;
+    let ii;
+    let ds: String = env.get_string(data).expect("参数错误——lib——un!").into();
+    if de == 0 {
+        kk = &key::KEY;
+        ii = &key::IV;
+    } else {
+        kk = &key::E_KEY;
+        ii = &key::E_IV;
     }
-    let et = ds.as_bytes().from_base64().unwrap();
-    let ss = aesl::decrypt(&et, &key::KEY, &key::IV).ok().unwrap();
-    if de == 1 {
-        println!("原文： {:?}", ss);
-    }
-    let output = env.new_string(String::from_utf8_unchecked(ss)).unwrap();
-    output.into_inner()
+    let et = match ds.from_base64() {
+        Ok(d) => d,
+        Err(e) => {
+            println!("unbase64转换失败:{:?}", ds);
+            return env.new_string(ds).unwrap().into_inner();
+        }
+    };
+    let ss = match aesl::decrypt(&et, kk, ii).ok() {
+        Some(d) => d,
+        None => {
+            println!("解密失败:{:?}", et);
+            return env.new_string(ds).unwrap().into_inner();
+        }
+    };
+    let rs = String::from_utf8(ss).unwrap();
+    return env.new_string(rs).unwrap().into_inner();
 }
