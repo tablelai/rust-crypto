@@ -1,11 +1,8 @@
-use std::ffi::{CStr, CString};
-
 use aesl;
 use jni::objects::{JObject, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
-use key;
-use rand::{OsRng, Rng};
+use key::IKEY;
 use serialize::base64::{FromBase64, ToBase64, STANDARD};
 
 #[no_mangle]
@@ -62,19 +59,9 @@ pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_aesd(
     data: JString,
     de: i32,
 ) -> jstring {
-    let kk;
-    let ii;
     let ds: String = env.get_string(data).expect("参数错误——lib——en!").into();
-    if de == 0 {
-        kk = &key::KEY;
-        ii = &key::IV;
-    } else {
-        kk = &key::E_KEY;
-        ii = &key::E_IV;
-    }
-
-    let encrypted_data = aesl::encrypt(ds.as_bytes(), kk, ii).ok().unwrap();
-
+    let ik = IKEY::new(de);
+    let encrypted_data = aesl::encrypt(ds.as_bytes(), &ik.key, &ik.iv).ok().unwrap();
     let es = encrypted_data.to_base64(STANDARD);
     let output = env.new_string(es).unwrap();
     output.into_inner()
@@ -96,27 +83,19 @@ pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaesd(
     data: JString,
     de: i32,
 ) -> jstring {
-    let kk;
-    let ii;
     let ds: String = env.get_string(data).expect("参数错误——lib——un!").into();
-    if de == 0 {
-        kk = &key::KEY;
-        ii = &key::IV;
-    } else {
-        kk = &key::E_KEY;
-        ii = &key::E_IV;
-    }
+    let ik = IKEY::new(de);
     let et = match ds.from_base64() {
         Ok(d) => d,
-        Err(e) => {
-            println!("unbase64转换失败:{:?}", ds);
+        Err(_e) => {
+            println!("unbase64转换失败：{:?}", ds);
             return env.new_string(ds).unwrap().into_inner();
         }
     };
-    let ss = match aesl::decrypt(&et, kk, ii).ok() {
+    let ss = match aesl::decrypt(&et, &ik.key, &ik.iv).ok() {
         Some(d) => d,
         None => {
-            println!("解密失败:{:?}", et);
+            println!("解密失败：{:?}，密文：{:?}", et, ds);
             return env.new_string(ds).unwrap().into_inner();
         }
     };
