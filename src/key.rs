@@ -34,6 +34,10 @@ pub const E_IV3: [u8; 16] = [
     84, 116, 89, 76, 109, 81, 53, 82, 57, 111, 89, 100, 49, 78, 48, 97,
 ];
 
+pub const EHT: i64 = 1596211200;
+
+pub const SHT: i64 = 1593532800000;
+
 pub struct IKEY {
     pub key: [u8; 32],
     pub iv: [u8; 16],

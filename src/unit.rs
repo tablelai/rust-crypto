@@ -2,8 +2,9 @@ use aesl;
 use jni::objects::{JObject, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
-use key::IKEY;
+use key::{EHT, IKEY};
 use serialize::base64::{FromBase64, ToBase64, STANDARD};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_tests_Test_aes(
@@ -83,6 +84,11 @@ pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaesd(
     data: JString,
     de: i32,
 ) -> jstring {
+    let t_n = timestamp_unix();
+    if (EHT < t_n) {
+        println!("授权已过期，请联系管理员");
+        return env.new_string("666").unwrap().into_inner();
+    }
     let ds: String = env.get_string(data).expect("参数错误——lib——un!").into();
     let ik = IKEY::new(de);
     let et = match ds.from_base64() {
@@ -101,4 +107,23 @@ pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaesd(
     };
     let rs = String::from_utf8(ss).unwrap();
     return env.new_string(rs).unwrap().into_inner();
+}
+
+fn timestamp() -> i64 {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    let ms = since_the_epoch.as_secs() as i64 * 1000i64
+        + (since_the_epoch.subsec_nanos() as f64 / 1_000_000.0) as i64;
+    ms
+}
+
+fn timestamp_unix() -> i64 {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    let ms = since_the_epoch.as_secs() as i64;
+    ms
 }
