@@ -105,7 +105,13 @@ pub extern "C" fn Java_com_fcwc_pay_utils_AESUtil_unaesd(
             return env.new_string(ds).unwrap().into_inner();
         }
     };
-    let rs = String::from_utf8(ss).unwrap();
+    let rs = match String::from_utf8(ss) {
+        Ok(d) => d,
+        Err(_e) => {
+            println!("utf8转换失败，密文：{:?}", ds);
+            return env.new_string(ds).unwrap().into_inner();
+        }
+    };
     return env.new_string(rs).unwrap().into_inner();
 }
 
